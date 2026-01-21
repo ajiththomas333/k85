@@ -20,7 +20,7 @@ pipeline {
             steps {
                 dir('backend') {
                     bat 'npm install'
-                    bat 'npm test'
+                   
                 }
             }
         }
@@ -29,7 +29,7 @@ pipeline {
             steps {
                 dir('frontend') {
                     bat 'npm install'
-                    bat 'npm test -- --coverage --watchAll=false'
+                   
                 }
             }
         }

@@ -10,9 +10,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
+                git branch: 'master',
                     url: 'https://github.com/ajiththomas333/k85.git',
-                    credentialsId: 'github-credentials'
+                    credentialsId: 'git'
             }
         }
 

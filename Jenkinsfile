@@ -4,10 +4,10 @@ pipeline {
     environment {
         DOCKER_REGISTRY = 'ajiththomas10'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        KUBERNETES_SERVER = 'https://kubernetes.default.svc'  
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'master',
@@ -20,7 +20,6 @@ pipeline {
             steps {
                 dir('backend') {
                     bat 'npm install'
-                   
                 }
             }
         }
@@ -29,13 +28,13 @@ pipeline {
             steps {
                 dir('frontend') {
                     bat 'npm install'
-                   
                 }
             }
         }
 
         stage('Build & Push Docker Images') {
             parallel {
+
                 stage('Backend Image') {
                     steps {
                         script {
@@ -49,6 +48,7 @@ pipeline {
                         }
                     }
                 }
+
                 stage('Frontend Image') {
                     steps {
                         script {
@@ -65,38 +65,40 @@ pipeline {
             }
         }
 
+        stage('Check kubectl availability') {
+            steps {
+                bat 'where kubectl'
+                bat 'kubectl version --client'
+            }
+        }
+
         stage('Verify Kubernetes Connectivity') {
             steps {
-                script {
-                    echo '🔍 Verifying Kubernetes API (In-cluster ServiceAccount)...'
-                    bat 'kubectl cluster-info'
-                    bat 'kubectl get nodes -o wide'
-                }
+                echo '🔍 Verifying Kubernetes API (kubeconfig-based access)...'
+                bat 'kubectl cluster-info'
+                bat 'kubectl get nodes -o wide'
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh """
-                        sed -i 's|your-registry/mern-backend:latest|${DOCKER_REGISTRY}/mern-backend:${IMAGE_TAG}|g' k8s/backend-deployment.yaml
-                        sed -i 's|your-registry/mern-frontend:latest|${DOCKER_REGISTRY}/mern-frontend:${IMAGE_TAG}|g' k8s/frontend-deployment.yaml
-                    """
-                    bat 'kubectl apply -f k8s/'
-                    bat 'kubectl rollout status deployment/backend-deployment'
-                    bat 'kubectl rollout status deployment/frontend-deployment'
-                }
+                bat """
+                powershell -Command "(Get-Content k8s/backend-deployment.yaml) -replace 'your-registry/mern-backend:latest','${DOCKER_REGISTRY}/mern-backend:${IMAGE_TAG}' | Set-Content k8s/backend-deployment.yaml"
+                powershell -Command "(Get-Content k8s/frontend-deployment.yaml) -replace 'your-registry/mern-frontend:latest','${DOCKER_REGISTRY}/mern-frontend:${IMAGE_TAG}' | Set-Content k8s/frontend-deployment.yaml"
+                """
+
+                bat 'kubectl apply -f k8s/'
+                bat 'kubectl rollout status deployment/backend-deployment'
+                bat 'kubectl rollout status deployment/frontend-deployment'
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                script {
-                    bat 'kubectl get pods -o wide'
-                    bat 'kubectl get services'
-                    bat 'kubectl wait --for=condition=ready pod -l app=backend --timeout=300s'
-                    bat 'kubectl wait --for=condition=ready pod -l app=frontend --timeout=300s'
-                }
+                bat 'kubectl get pods -o wide'
+                bat 'kubectl get services'
+                bat 'kubectl wait --for=condition=ready pod -l app=backend --timeout=300s'
+                bat 'kubectl wait --for=condition=ready pod -l app=frontend --timeout=300s'
             }
         }
     }
@@ -104,6 +106,6 @@ pipeline {
     post {
         success { echo '🎉 Pipeline completed successfully!' }
         failure { echo '❌ Pipeline failed!' }
-        always { sh 'docker system prune -f' }
+        always { bat 'docker system prune -f' }
     }
 }
